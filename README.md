@@ -12,6 +12,7 @@ Um jogo de mesa multiplayer no navegador, da família do rummy, onde toda combin
 ![SignalR](https://img.shields.io/badge/tempo%20real-SignalR-0a7bbb)
 ![Sem dependências](https://img.shields.io/badge/pacotes%20NuGet-0-2e8b4f)
 ![Celular](https://img.shields.io/badge/funciona%20no-celular-cc3a2f)
+![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-d99a00)
 
 <img src="docs/screenshots/mesa.jpg" alt="Partida no tema Espaço com quatro jogadores" width="900">
 
@@ -31,6 +32,7 @@ Um jogo de mesa multiplayer no navegador, da família do rummy, onde toda combin
 - [Como funciona por dentro](#como-funciona-por-dentro)
 - [Limitações e próximos passos](#limitações-e-próximos-passos)
 - [Créditos](#créditos)
+- [Licença](#licença)
 
 ---
 
@@ -274,3 +276,9 @@ Ideias pra frente: missões secretas pra cada jogador, eventos de rodada ("Maré
 Feito por **[Jefferson](https://github.com/jeffersonmds)**, com a ajuda do [Claude Code](https://claude.com/claude-code).
 
 Inspirado nos jogos da família do rummy. As regras de posse e roubo, as peças especiais e toda a arte são próprias deste projeto.
+
+---
+
+## Licença
+
+[MIT](LICENSE): pode usar, copiar, modificar e distribuir à vontade, inclusive em projetos comerciais, desde que mantenha o aviso de copyright e a licença.
