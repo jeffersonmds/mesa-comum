@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mesa Comum</title>
+<link rel="icon" type="image/png" href="img/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="img/icon-192.png">
+<meta name="theme-color" content="#1f5a43">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+<style>
+  :root {
+    --felt: #1f5a43; --felt-dark: #123628; --wood: #6b4226; --tile: #fbf3e2; --ink: #2b2118; --gold: #ffd166;
+    --sol: #d99a00; --mar: #1f6fb8; --folha: #2e8b4f; --uva: #7b3fb0; --brasa: #cc3a2f;
+    --bg: url(img/feltro/fundo.jpg); /* trocado pelo tema da sala */
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; padding-bottom: 190px; color: #fff;
+    font-family: Fredoka, system-ui, sans-serif;
+    background: var(--bg) center / cover fixed, radial-gradient(ellipse at center, var(--felt) 0%, var(--felt-dark) 100%) fixed;
+  }
+  button {
+    font: inherit; font-weight: 600; border: 0; border-radius: 12px; padding: 10px 18px; cursor: pointer;
+    background: var(--gold); color: var(--ink); box-shadow: 0 3px 0 #c9971f;
+  }
+  button:active { transform: translateY(2px); box-shadow: 0 1px 0 #c9971f; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.ghost { background: rgba(255,255,255,.15); color: #fff; box-shadow: none; }
+  input { font: inherit; padding: 10px 14px; border-radius: 12px; border: 0; }
+  /* seletores no estilo dos botões fantasma, com seta própria (a nativa não segue o tema) */
+  select {
+    appearance: none; -webkit-appearance: none; cursor: pointer;
+    font: inherit; font-weight: 600; color: #fff;
+    padding: 9px 36px 9px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.2);
+    background: rgba(255,255,255,.12) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23ffd166' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 13px center / 12px;
+    transition: background-color .15s, border-color .15s;
+  }
+  select:hover { background-color: rgba(255,255,255,.2); border-color: rgba(255,209,102,.5); }
+  select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  select option { color: var(--ink); background: var(--tile); }
+  #setup { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  input { width: 100%; }
+  [hidden] { display: none !important; }
+
+  #lobby { max-width: 380px; margin: 4vh auto; padding: 0 16px; text-align: center; }
+  #lobby h1 { margin: 0; }
+  /* a arte é 16:9 com a ilustração no centro: corta em quadrado e esfuma a borda pra fundir com o feltro */
+  #lobby h1 img {
+    width: min(320px, 100%); aspect-ratio: 1; object-fit: cover;
+    -webkit-mask-image: radial-gradient(circle, #000 58%, transparent 71%); mask-image: radial-gradient(circle, #000 58%, transparent 71%);
+  }
+  #lobby > p { opacity: .8; margin-top: 0; }
+  .row { display: flex; gap: 8px; margin-top: 12px; }
+  details { margin-top: 28px; text-align: left; background: rgba(0,0,0,.25); padding: 12px 16px; border-radius: 12px; }
+  summary { cursor: pointer; font-weight: 600; }
+  details li { margin: 6px 0; opacity: .9; }
+  .ico { width: 22px; height: 22px; vertical-align: middle; border-radius: 4px; }
+
+  /* faixas escuras com desfoque: o texto fica legível em cima de qualquer fundo de tema */
+  header, #status { background: rgba(8,12,10,.72); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  header { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  header h2 { margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; }
+  /* selo do logo: o miolo quadrado da arte 16:9, que é a guirlanda com a mesa */
+  .brand { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px rgba(255,209,102,.6); }
+  #code { letter-spacing: .2em; color: var(--gold); }
+  #players { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; flex: 1; }
+  /* chip em duas linhas (nome em cima, peças/pontos embaixo): 4 jogadores cabem lado a lado */
+  #players li { display: flex; align-items: center; gap: 8px; white-space: nowrap; background: rgba(255,255,255,.12); padding: 3px 12px 3px 3px; border-radius: 999px; }
+  #players li.turn { background: var(--gold); color: var(--ink); }
+  #players li.off { opacity: .5; }
+  #players .avatar { width: 36px; height: 36px; }
+  #players .who { display: flex; flex-direction: column; line-height: 1.2; }
+  #players .stats { opacity: .75; font-size: .75em; }
+  #players small { font-size: .7em; padding: 1px 6px; border-radius: 6px; background: rgba(255,255,255,.15); }
+  #players .kick { padding: 0 6px; margin-left: 2px; font-size: .8rem; line-height: 1.4; border-radius: 50%; background: rgba(255,255,255,.18); color: inherit; box-shadow: none; }
+  #players .kick:hover { background: #cc3a2f; color: #fff; }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; } /* aceita a arte 16:9 do Flow sem recortar antes */
+  .tools, #reacts { display: flex; align-items: center; gap: 2px; } /* reações e som quebram de linha juntos */
+  #reacts button, #mute { background: none; box-shadow: none; padding: 4px 6px; font-size: 1.2rem; }
+
+  #status { padding: 10px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  #log { flex: 1; min-width: 200px; }
+  #timer { font-weight: 700; min-width: 4ch; }
+  #timer.urgent { color: #ff9d90; }
+
+  #table { display: flex; flex-wrap: wrap; gap: 28px 14px; padding: 32px 16px; align-content: flex-start; }
+  .set {
+    position: relative; display: flex; gap: 4px; padding: 8px; min-height: 82px; cursor: pointer;
+    border-radius: 14px; background: rgba(0,0,0,.4); border: 2px solid transparent;
+  }
+  .set::before {
+    content: attr(data-label); position: absolute; top: -22px; left: 6px; font-size: .8rem; white-space: nowrap;
+    padding: 1px 8px; border-radius: 8px; background: rgba(8,12,10,.7);
+  }
+  .set.mine { border-color: var(--gold); }
+  .set.mine::before { color: var(--gold); }
+  .set.bad { border: 2px dashed #ff7b6b; }
+  .set.bad::before { color: #ff9d90; }
+  .set.new { align-items: center; padding: 8px 18px; border: 2px dashed rgba(255,255,255,.35); color: rgba(255,255,255,.75); }
+  .over { background: rgba(255,209,102,.25) !important; }
+
+  .tile {
+    width: 46px; height: 64px; border-radius: 8px; background: var(--tile); box-shadow: 0 3px 0 #d8c9a8;
+    display: grid; place-items: center; align-content: center; gap: 2px; line-height: 1;
+    font-weight: 700; font-size: 1.6rem; cursor: pointer; user-select: none; transition: transform .12s;
+  }
+  .tile small { font-size: .7rem; }
+  /* só na sua vez: o dedo arrasta a peça em vez de rolar a página */
+  .tile.grab { cursor: grab; touch-action: none; -webkit-touch-callout: none; }
+  .tile.lifted { opacity: .3; }
+  .tile.ghost {
+    position: fixed; z-index: 50; pointer-events: none; transition: none;
+    transform: translate(-50%, -85%) scale(1.15); box-shadow: 0 0 0 3px var(--gold), 0 12px 24px rgba(0,0,0,.45);
+  }
+  .tile.sel { transform: translateY(-8px); box-shadow: 0 0 0 3px var(--gold), 0 8px 14px rgba(0,0,0,.35); }
+  .tile.fresh { box-shadow: 0 0 0 3px #7cf5c4, 0 0 14px #7cf5c4; }
+  .tile.pop { animation: pop .5s ease-out both; }
+  @keyframes pop { 0% { transform: scale(.3) translateY(-30px); opacity: 0; } 70% { transform: scale(1.12); } 100% { transform: none; } }
+  .tile.joker { background: #fbf0dd; } /* mesmo creme do fundo das artes geradas no Flow */
+  .tile.joker img { width: 42px; height: 42px; pointer-events: none; }
+  .tile.joker small { color: var(--ink); opacity: .6; font-size: .55rem; }
+  .c0 { color: var(--sol); } .c1 { color: var(--mar); } .c2 { color: var(--folha); } .c3 { color: var(--uva); } .c4 { color: var(--brasa); }
+
+  #rack {
+    position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px 16px;
+    background: linear-gradient(var(--wood), #4a2c18); box-shadow: 0 -4px 16px rgba(0,0,0,.35);
+  }
+  #actions { display: flex; gap: 8px; margin-bottom: 10px; justify-content: flex-end; flex-wrap: wrap; }
+  #sort { margin-right: auto; }
+  #hand { display: flex; flex-wrap: wrap; gap: 6px; min-height: 64px; cursor: pointer; }
+
+  #msg {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 40; max-width: calc(100% - 32px);
+    background: #fff; color: var(--ink); padding: 10px 18px; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.3);
+  }
+  #msg.big { font-size: 1.3rem; padding: 16px 24px; }
+
+  /* janelinhas (pódio e confirmação) */
+  .overlay { position: fixed; inset: 0; z-index: 25; display: grid; place-items: center; padding: 16px; background: rgba(10,30,20,.7); }
+  .overlay .card { background: var(--tile); color: var(--ink); border-radius: 20px; padding: 24px; width: min(380px, 100%); text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,.4); }
+  .overlay h2 { margin: 0 0 12px; }
+  .overlay p { margin: 0 0 20px; opacity: .8; }
+  .overlay .row { justify-content: center; }
+  .overlay .ghost { color: var(--ink); background: rgba(43,33,24,.08); }
+  button.danger { background: #cc3a2f; color: #fff; box-shadow: 0 3px 0 #8f241c; }
+  #endGame { color: #ffb4a8; }
+  #podium { list-style: none; margin: 0 0 20px; padding: 0; }
+  #podium li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; font-size: 1.1rem; }
+  #podium li:first-child { background: #ffe9a8; font-size: 1.3rem; }
+  #podium .avatar { width: 44px; height: 44px; }
+  #podium b { margin-left: auto; }
+  #moments { list-style: none; margin: 0 0 20px; padding: 12px; text-align: left; background: #f1e4c8; border-radius: 12px; }
+  #moments li { margin: 4px 0; }
+
+  .float { position: fixed; z-index: 30; font-size: 2rem; pointer-events: none; transform: translate(-50%, 0); animation: rise 1.6s ease-out forwards; }
+  @keyframes rise { to { transform: translate(-50%, -90px); opacity: 0; } }
+  .confetti { position: fixed; top: -14px; z-index: 30; width: 8px; height: 14px; pointer-events: none; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(105vh) rotate(720deg); } }
+  @media (max-width: 600px) {
+    header { padding: 8px 12px; gap: 8px; }
+    .brand { width: 40px; height: 40px; }
+    #players .avatar { width: 30px; height: 30px; }
+    /* chips menores e nível só com a bolinha: 2 jogadores por linha em vez de 1 */
+    #players { gap: 6px; }
+    #players li { font-size: .8rem; gap: 6px; padding-right: 8px; }
+    #players .lvl { display: none; }
+    #players small { padding: 0 3px; }
+    #reacts button, #mute { font-size: 1.05rem; padding: 2px 4px; }
+    #status { padding: 8px 12px; font-size: .9rem; }
+    button, select { padding-top: 8px; padding-bottom: 8px; font-size: .9rem; }
+    #table { padding: 28px 10px; gap: 26px 8px; }
+    .set { padding: 6px; gap: 3px; min-height: 66px; }
+    .tile { width: 38px; height: 54px; font-size: 1.3rem; border-radius: 7px; }
+    .tile.joker img { width: 34px; height: 34px; }
+    #rack { padding: 8px 10px 12px; }
+    #hand { gap: 5px; min-height: 54px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .tile.pop, .float, .confetti { animation: none; } .float, .confetti { display: none; } }
+</style>
+</head>
+<body>
+<div id="msg" hidden></div>
+
+<section id="lobby">
+  <h1><img src="img/logo.jpg" alt="Mesa Comum"></h1>
+  <p>Monte combinações. Roube as dos amigos.</p>
+  <input id="name" placeholder="Seu nome" maxlength="16">
+  <div class="row"><button id="create" style="flex:1">Criar sala</button></div>
+  <div class="row"><input id="codeIn" placeholder="Código da sala" maxlength="4"><button id="join" class="ghost">Entrar</button></div>
+  <details>
+    <summary>Como jogar</summary>
+    <ul>
+      <li>Peças de 1 a 10 em 5 cores. Cada um começa com 12 (8 na partida rápida).</li>
+      <li><b>Trinca:</b> mesmo número, cores diferentes (3+). <b>Sequência:</b> mesma cor, números seguidos (3+).</li>
+      <li><b>Peças especiais</b> (valem 5 pontos, mudam de combinação na mesa mas não voltam pra mão):
+        <br><img class="ico" src="img/coringa.webp" alt=""> <b>Coringa</b> (2): vale qualquer peça.
+        <br><img class="ico" src="img/espelho.webp" alt=""> <b>Espelho</b>: no meio de uma combinação refletida, com as 2 cópias de cada peça: 3 4 5 · espelho · 5 4 3.
+        <br><img class="ico" src="img/duplo.webp" alt=""> <b>Duplo</b>: vale 1 ou 2 peças, fecha um buraco duplo: 3 · duplo · 6.
+        <br><img class="ico" src="img/camaleao.webp" alt=""> <b>Camaleão</b>: numa sequência, ocupa uma posição e troca a cor dali pra frente.</li>
+      <li>Na sua vez, arraste (ou toque e toque) pra reorganizar a mesa e baixar peças. No fim, tudo tem que estar válido. Não baixou nada? Compra uma. O tempo acabou? Compra sozinho.</li>
+      <li>Cada combinação é de quem baixou mais peças nela. Reorganize a mesa pra <b>roubar</b>!</li>
+      <li>Pontos: combinações suas menos o que sobrou na mão. Esvaziar a mão vale +10 e encerra o jogo.</li>
+      <li><b>Modos:</b> Normal (90s por vez) · Rápida (8 peças, 45s) · Caos (3× mais especiais).</li>
+      <li><b>Temas:</b> Feltro, Taverna, Praia e Espaço, escolhidos na sala antes de começar.</li>
+    </ul>
+  </details>
+</section>
+
+<section id="game" hidden>
+  <header>
+    <button id="leave" class="ghost" title="Voltar pra tela inicial">← Sair</button>
+    <h2><img class="brand" src="img/logo.jpg" alt="Mesa Comum"><span>Sala <span id="code"></span></span></h2>
+    <button id="copy" class="ghost">Copiar convite</button>
+    <ul id="players"></ul>
+    <div class="tools"><div id="reacts"></div><button id="mute" title="Som"></button></div>
+  </header>
+  <div id="status">
+    <span id="log"></span><span id="timer"></span><span id="bag"></span>
+    <button id="endGame" class="ghost" hidden>⛔ Encerrar</button>
+    <span id="setup">
+      <select id="mode" aria-label="Modo">
+        <option value="normal">⏱️ Normal</option><option value="rapida">⚡ Rápida</option><option value="caos">🌀 Caos</option>
+      </select>
+      <select id="theme" aria-label="Tema">
+        <option value="feltro">🟩 Feltro</option><option value="taverna">🍺 Taverna</option>
+        <option value="praia">🏖️ Praia</option><option value="espaco">🚀 Espaço</option>
+      </select>
+      <select id="botLevel" aria-label="Nível do bot">
+        <option value="1">🟢 Fácil</option><option value="2" selected>🟡 Médio</option><option value="3">🔴 Difícil</option>
+      </select>
+      <button id="bot" class="ghost">+ Bot</button>
+      <button id="start"></button>
+    </span>
+  </div>
+  <main id="table"></main>
+  <footer id="rack">
+    <div id="actions">
+      <button id="sort" class="ghost"></button>
+      <button id="hint" class="ghost">💡 Dica</button>
+      <button id="back" class="ghost">↶ Voltar</button>
+      <button id="undo" class="ghost">Desfazer tudo</button>
+      <button id="go"></button>
+    </div>
+    <div id="hand"></div>
+  </footer>
+</section>
+
+<div id="end" class="overlay" hidden>
+  <div class="card">
+    <h2>Fim de jogo!</h2>
+    <ol id="podium"></ol>
+    <ul id="moments"></ul>
+    <div class="row"><button id="again">Jogar de novo</button><button id="closeEnd" class="ghost">Ver mesa</button></div>
+  </div>
+</div>
+
+<div id="confirm" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="card">
+    <h2 id="confirmTitle"></h2>
+    <p id="confirmText"></p>
+    <div class="row"><button id="confirmNo" class="ghost">Continuar jogando</button><button id="confirmYes" class="danger"></button></div>
+  </div>
+</div>
+
+<script>
+  const $ = s => document.querySelector(s);
+  const SHAPES = ['●', '▲', '■', '◆', '★']; // um símbolo por cor, pra quem não distingue as cores
+  const MIRROR = 2, DOUBLE = 3, CHAMELEON = 4; // enum Wild do servidor
+  const WILDS = { 1: ['coringa', 'coringa'], 2: ['espelho', 'espelho'], 3: ['duplo', 'duplo'], 4: ['camaleao', 'camaleão'] }; // [arquivo em img/, nome]
+  const REACTIONS = ['😂', '😱', '👏', '😈', '🤔', '❤️']; // mesma lista do servidor
+  const MEDALS = ['🥇', '🥈', '🥉', '4º'];
+  const LEVELS = { 1: ['🟢', 'fácil'], 2: ['🟡', 'médio'], 3: ['🔴', 'difícil'] };
+  const esc = s => s.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+  // sessionStorage: cada aba é um jogador (dá pra testar com 2 abas), e o F5 não perde o lugar
+  const token = sessionStorage.token ||= Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+  let S = null;              // último estado vindo do servidor
+  let table = [], hand = []; // cópia local que você mexe durante a sua vez
+  let sel = null;            // id da peça selecionada
+  let checks = [];           // {valid, owner, reason} de cada combinação; vazio = esperando o servidor
+  let undoStack = [];          // fotos da mesa e da mão antes de cada movimento, pro "Voltar"
+  let lastSeq = null, deadline = 0, popFresh = false, endClosed = false;
+  let sortBy = sessionStorage.sortBy || 'cor', muted = sessionStorage.muted === '1';
+
+  const conn = new signalR.HubConnectionBuilder().withUrl('/hub').withAutomaticReconnect().build();
+  conn.on('state', s => {
+    const isNew = lastSeq !== null && s.seq !== lastSeq;
+    if (isNew) {
+      sound(s.kind);
+      if (s.kind === 'steal') flash(s.log.split(' Vez de')[0], true);
+      if (s.kind === 'end') confetti();
+      if (s.kind === 'start') endClosed = false;
+    }
+    popFresh = isNew;
+    lastSeq = s.seq;
+    deadline = Date.now() + s.turnLeftMs;
+    S = s;
+    reset();
+  });
+  conn.on('react', floatEmoji);
+  conn.onreconnected(rejoin);
+  conn.start().then(rejoin);
+
+  $('#codeIn').value = new URLSearchParams(location.search).get('sala') || '';
+  $('#name').value = sessionStorage.name || '';
+  $('#reacts').replaceChildren(...REACTIONS.map(e => {
+    const b = document.createElement('button');
+    b.textContent = e;
+    b.title = 'Reagir';
+    b.onclick = () => conn.invoke('React', e);
+    return b;
+  }));
+
+  async function rejoin() {
+    if (!sessionStorage.code) return;
+    const err = await conn.invoke('Join', sessionStorage.code, token, sessionStorage.name || '');
+    if (err) { delete sessionStorage.code; S = null; render(); flash(err); }
+  }
+  function entered(code) { sessionStorage.code = code; history.replaceState(null, '', '?sala=' + code); }
+  function myName() { return sessionStorage.name = $('#name').value.trim(); }
+
+  $('#create').onclick = async () => {
+    try { entered(await conn.invoke('Create', token, myName())); }
+    catch (e) { flash(e.message.split('HubException: ').pop()); } // ex.: servidor cheio
+  };
+  $('#join').onclick = async () => {
+    const code = $('#codeIn').value.trim().toUpperCase();
+    const err = await conn.invoke('Join', code, token, myName());
+    err ? flash(err) : entered(code);
+  };
+  $('#start').onclick = $('#again').onclick = () => call('Start', $('#mode').value);
+  $('#bot').onclick = () => call('AddBot', Number($('#botLevel').value));
+  $('#players').onclick = e => { const b = e.target.closest('.kick'); if (b) call('RemoveBot', Number(b.dataset.seat)); };
+  $('#back').onclick = () => {
+    const prev = undoStack.pop();
+    if (!prev) return;
+    ({ table, hand } = prev);
+    changed();
+  };
+  $('#hint').onclick = async () => {
+    const layout = await conn.invoke('Hint');
+    if (!layout) return flash('Nenhuma jogada à vista. Compre uma peça.');
+    const byId = new Map([...S.table.flatMap(s => s.tiles), ...S.hand].map(t => [t.id, t]));
+    const used = new Set(layout.flat());
+    snapshot();
+    table = layout.map(s => s.map(id => byId.get(id)));
+    hand = S.hand.filter(t => !used.has(t.id));
+    changed();
+    flash('💡 Sugestão montada na mesa. Confirme, ajuste ou volte.');
+  };
+  $('#theme').onchange = e => call('SetTheme', e.target.value);
+  $('#closeEnd').onclick = () => { endClosed = true; render(); };
+  // Janelinha de confirmação no estilo do jogo. O foco começa em "Continuar jogando", que é o lado seguro;
+  // Esc e clique fora também dizem não.
+  let confirmDone = null, confirmFrom = null;
+  function ask(title, text, yes) {
+    $('#confirmTitle').textContent = title;
+    $('#confirmText').textContent = text;
+    $('#confirmYes').textContent = yes;
+    confirmFrom = document.activeElement;
+    $('#confirm').hidden = false;
+    $('#confirmNo').focus();
+    return new Promise(res => confirmDone = res);
+  }
+  function answer(ok) {
+    if ($('#confirm').hidden) return;
+    $('#confirm').hidden = true;
+    confirmFrom?.focus();
+    confirmDone(ok);
+  }
+  $('#confirmNo').onclick = () => answer(false);
+  $('#confirmYes').onclick = () => answer(true);
+  $('#confirm').onclick = e => { if (e.target.id === 'confirm') answer(false); };
+  addEventListener('keydown', e => { if (e.key === 'Escape') answer(false); });
+
+  $('#endGame').onclick = async () => {
+    if (await ask('Encerrar a partida?', 'O jogo acaba agora pra todo mundo, e a pontuação atual vira o resultado.', 'Encerrar')) call('EndGame');
+  };
+  $('#leave').onclick = async () => {
+    const playing = S.started && !S.over;
+    if (playing && !await ask('Sair da partida?',
+      'Você continua na mesa, mas as suas vezes passam sozinhas. Dá pra voltar com o código da sala.', 'Sair')) return;
+    await conn.invoke('Leave');
+    $('#codeIn').value = S.code; // facilita voltar
+    delete sessionStorage.code;
+    history.replaceState(null, '', '/');
+    document.documentElement.style.removeProperty('--bg'); // tela inicial volta pro feltro
+    S = null;
+    lastSeq = null;
+    endClosed = false;
+    render();
+  };
+  $('#undo').onclick = reset;
+  $('#go').onclick = () => placedCount() ? call('Play', table.map(s => s.map(t => t.id))) : call('Draw');
+  $('#sort').onclick = () => { sortBy = sessionStorage.sortBy = sortBy === 'cor' ? 'número' : 'cor'; render(); };
+  $('#mute').onclick = () => { muted = !muted; sessionStorage.muted = muted ? '1' : '0'; render(); };
+  dropZone($('#hand'), 'hand');
+  $('#copy').onclick = () => {
+    const url = `${location.origin}/?sala=${S.code}`;
+    navigator.clipboard ? navigator.clipboard.writeText(url).then(() => flash('Convite copiado!')) : flash(url);
+  };
+
+  async function call(method, ...args) {
+    const err = await conn.invoke(method, ...args);
+    if (err) flash(err);
+  }
+
+  let flashTimer;
+  function flash(text, big = false) {
+    $('#msg').textContent = text;
+    $('#msg').className = big ? 'big' : '';
+    $('#msg').hidden = false;
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => $('#msg').hidden = true, big ? 4000 : 3500);
+  }
+
+  // Sons sintetizados na hora: nenhum arquivo de áudio
+  let audio;
+  function tone(freqs, { dur = 0.12, type = 'triangle', gap = 0.09, vol = 0.15 } = {}) {
+    if (muted) return;
+    audio ||= new AudioContext();
+    freqs.forEach((f, i) => {
+      const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + i * gap;
+      o.type = type;
+      o.frequency.value = f;
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g).connect(audio.destination);
+      o.start(t);
+      o.stop(t + dur);
+    });
+  }
+  const SOUNDS = {
+    start: () => tone([392, 523, 659]),
+    play: () => tone([523, 784]),
+    draw: () => tone([330], { dur: 0.08 }),
+    steal: () => tone([622, 466, 311, 233], { type: 'sawtooth', dur: 0.2, gap: 0.12, vol: 0.07 }),
+    end: () => tone([523, 659, 784, 1047, 784, 1047], { gap: 0.11, dur: 0.18 }),
+    pick: () => tone([880], { dur: 0.05, vol: 0.06 }),
+    react: () => tone([1047, 1319], { dur: 0.07, vol: 0.06 }),
+  };
+  const sound = kind => SOUNDS[kind]?.();
+
+  function floatEmoji(seat, emoji) {
+    const chip = document.querySelector(`#players li[data-seat="${seat}"]`);
+    if (!chip) return;
+    const r = chip.getBoundingClientRect(), el = document.createElement('div');
+    el.className = 'float';
+    el.textContent = emoji;
+    el.style.left = `${r.left + r.width / 2}px`;
+    el.style.top = `${r.top}px`;
+    document.body.append(el);
+    setTimeout(() => el.remove(), 1600);
+    sound('react');
+  }
+
+  function confetti() {
+    const colors = ['#d99a00', '#1f6fb8', '#2e8b4f', '#7b3fb0', '#cc3a2f', '#ffd166'];
+    for (let i = 0; i < 80; i++) {
+      const c = document.createElement('i');
+      c.className = 'confetti';
+      c.style.left = `${Math.random() * 100}vw`;
+      c.style.background = colors[i % colors.length];
+      c.style.animationDuration = `${2 + Math.random() * 2}s`;
+      c.style.animationDelay = `${Math.random() * 0.5}s`;
+      document.body.append(c);
+      setTimeout(() => c.remove(), 5000);
+    }
+  }
+
+  // Relógio do turno: o servidor manda quanto falta, a página só conta pra baixo
+  setInterval(() => {
+    if (!S || !S.started || S.over) return;
+    const secs = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+    $('#timer').textContent = `⏳ ${secs}s`;
+    $('#timer').classList.toggle('urgent', secs <= 10);
+  }, 250);
+
+  function reset() {
+    if (S) {
+      table = S.table.map(s => [...s.tiles]);
+      hand = [...S.hand];
+      checks = S.table.map(s => ({ valid: true, owner: s.owner }));
+    }
+    sel = null;
+    undoStack = [];
+    render();
+  }
+
+  const snapshot = () => undoStack.push({ table: table.map(s => [...s]), hand: [...hand] });
+
+  // Depois de mexer na mesa local: limpa a seleção e pede ao servidor a validade/dono de cada combinação
+  function changed() {
+    sel = null;
+    checks = [];
+    render();
+    preview();
+  }
+
+  // As regras ficam só no servidor: a cada movimento ele diz se cada combinação vale e de quem fica
+  let previewSeq = 0;
+  async function preview() {
+    const n = ++previewSeq;
+    const res = await conn.invoke('Preview', table.map(s => s.map(t => t.id)));
+    if (n === previewSeq) { checks = res; render(); }
+  }
+
+  // Ordem de exibição: no espelho, metade / espelho / metade refletida;
+  // numa sequência, cada especial aparece no buraco que cobre (o camaleão na troca de cor)
+  function arrange(set) {
+    const pool = set.filter(t => t.wild);
+    const real = set.filter(t => !t.wild).sort((a, b) => a.num - b.num || a.color - b.color);
+    if (pool.some(t => t.wild === MIRROR)) {
+      return [...real.filter((t, i) => i % 2 === 0), ...pool, ...real.filter((t, i) => i % 2).reverse()];
+    }
+    if (real.length < 2 || real.every(t => t.num === real[0].num)) return [...real, ...pool];
+    const take = kind => { const i = pool.findIndex(w => w.wild === kind); return i < 0 ? null : pool.splice(i, 1)[0]; };
+    const out = [];
+    for (const t of real) {
+      const prev = out.findLast(x => !x.wild);
+      if (prev) {
+        let gap = t.num - prev.num - 1;
+        if (prev.color !== t.color) { const c = take(CHAMELEON); if (c) { out.push(c); gap--; } }
+        while (gap > 0 && pool.length) {
+          const w = (gap >= 2 && take(DOUBLE)) || pool.shift();
+          out.push(w);
+          gap -= w.wild === DOUBLE ? 2 : 1;
+        }
+      }
+      out.push(t);
+    }
+    return real.at(-1).num + pool.length > 10 ? [...pool, ...out] : [...out, ...pool];
+  }
+
+  const myTurn = () => S && S.started && !S.over && S.turn === S.you;
+  // Avatar do tema; se a arte daquele tema ainda não existe, cai no do Feltro (o fundo cai no gradiente verde sozinho)
+  const avatar = seat => `img/${S.theme}/avatar${seat}.webp" onerror="this.onerror=null;this.src='img/feltro/avatar${seat}.webp'`;
+  const placedCount = () => S.hand.length - hand.length;
+
+  function move(target) {
+    if (sel === null || !myTurn()) return;
+    if (target === 'hand' && !S.hand.some(t => t.id === sel)) return flash('Peças da mesa não voltam pra mão.');
+    snapshot();
+    let tile = hand.find(t => t.id === sel);
+    if (tile) hand = hand.filter(t => t !== tile);
+    else for (const s of table) { const i = s.findIndex(t => t.id === sel); if (i >= 0) tile = s.splice(i, 1)[0]; }
+    if (target === 'hand') hand.push(tile);
+    else if (target === null) table.push([tile]);
+    else target.push(tile);
+    table = table.filter(s => s.length);
+    sound('pick');
+    changed();
+  }
+
+  // Lugares onde dá pra soltar uma peça: tocar neles (com uma peça selecionada) ou soltar arrastando
+  function dropZone(el, target) {
+    el.classList.add('dz');
+    el._drop = target;
+    el.onclick = () => move(target);
+  }
+
+  // Arrastar com pointer events: o mesmo código serve pra mouse e dedo (o arrastar nativo do HTML não funciona no toque).
+  // Mexer menos de 8px é um toque, e aí o onclick faz o "seleciona e toca no destino".
+  let drag = null, swallowClick = false;
+  const zoneAt = (x, y) => document.elementFromPoint(x, y)?.closest('.dz');
+  function dragStart(e, t, el) {
+    if (!myTurn() || e.button > 0) return;
+    drag = { t, el, x: e.clientX, y: e.clientY, ghost: null, zone: null };
+    try { el.setPointerCapture(e.pointerId); } catch { /* evento sintético */ }
+  }
+  function dragMove(e) {
+    if (!drag) return;
+    if (!drag.ghost) {
+      if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 8) return;
+      drag.ghost = drag.el.cloneNode(true);
+      drag.ghost.classList.add('ghost');
+      document.body.append(drag.ghost);
+      drag.el.classList.add('lifted');
+      sel = drag.t.id;
+      navigator.vibrate?.(10);
+    }
+    drag.ghost.style.left = `${e.clientX}px`;
+    drag.ghost.style.top = `${e.clientY}px`;
+    const zone = zoneAt(e.clientX, e.clientY);
+    if (zone !== drag.zone) { drag.zone?.classList.remove('over'); zone?.classList.add('over'); drag.zone = zone; }
+    // perto da borda de cima ou logo acima da mão: rola a mesa
+    const rackTop = innerHeight - $('#rack').offsetHeight;
+    if (e.clientY < 70) scrollBy(0, -14);
+    else if (e.clientY > rackTop - 50 && e.clientY < rackTop) scrollBy(0, 14);
+  }
+  function dragEnd() {
+    const d = drag;
+    drag = null;
+    if (!d?.ghost) return; // foi só um toque
+    d.ghost.remove();
+    d.zone?.classList.remove('over');
+    swallowClick = true; // o clique que o navegador dispara ao soltar não é uma seleção
+    if (d.zone) move(d.zone._drop);
+    else { sel = null; render(); }
+  }
+
+  // A mão pode ocupar 1 ou 2 fileiras (celular): o fim da página acompanha a altura real dela
+  new ResizeObserver(() => {
+    document.body.style.paddingBottom = `${$('#rack').hidden ? 24 : $('#rack').offsetHeight + 24}px`;
+  }).observe($('#rack'));
+
+  function tileEl(t) {
+    const el = document.createElement('div');
+    const fresh = S.fresh.includes(t.id);
+    el.className = (t.wild ? 'tile joker' : `tile c${t.color}`) + (t.id === sel ? ' sel' : '')
+      + (fresh ? ' fresh' : '') + (fresh && popFresh ? ' pop' : '');
+    el.innerHTML = t.wild
+      ? `<img src="img/${WILDS[t.wild][0]}.webp" alt="${WILDS[t.wild][1]}"><small>${WILDS[t.wild][1]}</small>`
+      : `${t.num}<small>${SHAPES[t.color]}</small>`;
+    if (myTurn()) el.classList.add('grab');
+    el.onpointerdown = e => dragStart(e, t, el);
+    el.onpointermove = dragMove;
+    el.onpointerup = el.onpointercancel = dragEnd;
+    el.onclick = e => {
+      if (swallowClick) { swallowClick = false; e.stopPropagation(); return; }
+      if (!myTurn() || (sel !== null && sel !== t.id)) return; // com outra peça selecionada, o clique vai pra combinação
+      e.stopPropagation();
+      sel = sel === t.id ? null : t.id;
+      render();
+    };
+    return el;
+  }
+
+  function render() {
+    $('#lobby').hidden = !!S;
+    $('#game').hidden = !S;
+    $('#end').hidden = !S?.over || endClosed;
+    if (!S) return;
+    const turn = myTurn(), playing = S.started && !S.over;
+
+    $('#code').textContent = S.code;
+    document.documentElement.style.setProperty('--bg', `url(img/${S.theme}/fundo.jpg)`);
+    $('#theme').value = S.theme;
+    $('#players').innerHTML = S.players.map((p, i) =>
+      `<li data-seat="${i}" class="${playing && i === S.turn ? 'turn' : ''} ${p.online ? '' : 'off'}">` +
+      `<img class="avatar" src="${avatar(i)}" alt="">` +
+      `<span class="who"><span>${esc(p.name)}${i === S.you ? ' (você)' : ''}${p.isBot ? ` <small title="Bot ${LEVELS[p.level][1]}">${LEVELS[p.level][0]}<span class="lvl"> ${LEVELS[p.level][1]}</span></small>` : ''}${p.online ? '' : ' 💤'}</span>` +
+      (S.started ? `<span class="stats">${p.hand} peças · ${p.score} pts</span>` : '') + '</span>' +
+      (p.isBot && !playing ? `<button class="kick" data-seat="${i}" title="Tirar ${esc(p.name)}" aria-label="Tirar ${esc(p.name)}">✕</button>` : '') +
+      '</li>').join('');
+    $('#mute').textContent = muted ? '🔇' : '🔊';
+    $('#log').textContent = S.log || 'Esperando a galera entrar… manda o convite ou chama um bot!';
+    $('#bag').textContent = S.started ? `🎒 ${S.bag}` : '';
+    $('#timer').hidden = !playing;
+    $('#setup').hidden = playing;
+    $('#copy').hidden = playing; // durante a partida ninguém novo entra
+    $('#endGame').hidden = !playing || S.you !== 0; // dono da sala = lugar 0 (quem criou)
+    if (!playing) answer(false); // a partida acabou com a confirmação aberta: não tem mais o que encerrar
+    $('#bot').hidden = $('#botLevel').hidden = S.players.length >= 4;
+    $('#start').textContent = S.over ? 'Jogar de novo' : 'Começar partida';
+    $('#rack').hidden = !S.started;
+
+    const checked = checks.length === table.length;
+    $('#table').replaceChildren(...table.map((set, i) => {
+      const el = document.createElement('div'), c = checked ? checks[i] : null;
+      el.className = 'set' + (c && !c.valid ? ' bad' : '') + (c?.owner === S.you ? ' mine' : '');
+      el.dataset.label = !c ? '…' : !c.valid ? `⚠ ${c.reason}` : c.owner < 0 ? 'empate' : S.players[c.owner].name;
+      el.append(...arrange(set).map(tileEl));
+      dropZone(el, set);
+      return el;
+    }));
+    if (turn) {
+      const add = document.createElement('div');
+      add.className = 'set new';
+      add.textContent = '＋ nova combinação';
+      dropZone(add, null);
+      $('#table').append(add);
+    }
+
+    const order = sortBy === 'cor' ? (a, b) => a.color - b.color || a.num - b.num : (a, b) => a.num - b.num || a.color - b.color;
+    $('#hand').replaceChildren(...[...hand].sort(order).map(tileEl));
+    $('#sort').textContent = `Ordenar: ${sortBy}`;
+    const placed = placedCount();
+    $('#undo').hidden = $('#go').hidden = $('#hint').hidden = !turn;
+    $('#back').hidden = !turn || !undoStack.length;
+    $('#go').textContent = placed ? `Confirmar jogada (${placed})` : S.bag ? 'Comprar peça' : 'Passar a vez';
+    $('#go').disabled = placed > 0 && !(checked && checks.every(c => c.valid));
+
+    if (S.over) {
+      $('#podium').innerHTML = S.players.map((p, i) => ({ ...p, seat: i }))
+        .sort((a, b) => b.score - a.score)
+        .map((p, rank) => `<li>${MEDALS[rank]}<img class="avatar" src="${avatar(p.seat)}" alt="">${esc(p.name)}<b>${p.score} pts</b></li>`)
+        .join('');
+      $('#moments').hidden = !S.highlights.length;
+      $('#moments').innerHTML = S.highlights.map(h => `<li>${esc(h)}</li>`).join('');
+    }
+    popFresh = false; // a animação de entrada roda só no primeiro desenho depois da jogada
+  }
+</script>
+</body>
+</html>

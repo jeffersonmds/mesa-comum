@@ -1,0 +1,15 @@
+{
+  "name": "Mesa Comum",
+  "short_name": "Mesa Comum",
+  "description": "Monte combinações. Roube as dos amigos.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#123628",
+  "theme_color": "#1f5a43",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
